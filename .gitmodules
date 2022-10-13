@@ -1,0 +1,3 @@
+[submodule "uclock"]
+	path = uclock
+	url = https://github.com/midilab/uClock.git

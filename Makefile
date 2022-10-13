@@ -9,6 +9,6 @@ ARDUINO_PACKAGE_DIR := $(HOME)/.arduino/packages
 AVRDUDE      = /usr/bin/avrdude
 AVRDUDE_CONF = /etc/avrdude.conf
 
-ARDUINO_LIBS = SPI Control-Surface Wire LiquidCrystal_PCF8574
+ARDUINO_LIBS = SPI Control-Surface Wire LiquidCrystal_PCF8574 uclock
 
 include $(ARDMK_DIR)/Arduino.mk
