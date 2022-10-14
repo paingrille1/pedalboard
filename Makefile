@@ -1,5 +1,5 @@
 ARDUINO_DIR   = /usr/share/arduino/
-ARDUINO_VERSION = 10819
+#ARDUINO_VERSION = 10819
 ARDMK_DIR     = $(realpath ./lib/arduinomk)
 AVR_TOOLS_DIR = /usr
 MONITOR_PORT  = /dev/ttyACM0
