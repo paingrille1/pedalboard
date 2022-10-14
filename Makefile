@@ -5,7 +5,6 @@ AVR_TOOLS_DIR = /usr
 MONITOR_PORT  = /dev/ttyACM0
 BOARD_TAG   = nano
 BOARD_SUB   = atmega328
-ARDUINO_PACKAGE_DIR := $(HOME)/.arduino/packages
 AVRDUDE      = /usr/bin/avrdude
 AVRDUDE_CONF = /etc/avrdude.conf
 USER_LIB_PATH = $(realpath ./lib)
