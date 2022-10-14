@@ -1,3 +1,12 @@
 [submodule "uclock"]
-	path = uclock
+	path = lib/uclock
 	url = https://github.com/midilab/uClock.git
+[submodule "lib/arduinomk"]
+	path = lib/arduinomk
+	url = https://github.com/mjoldfield/Arduino-Makefile
+[submodule "lib/Control-Surface"]
+	path = lib/Control-Surface
+	url = https://github.com/tttapa/Control-Surface
+[submodule "lib/LiquidCrystal_PCF8574"]
+	path = lib/LiquidCrystal_PCF8574
+	url = https://github.com/mathertel/LiquidCrystal_PCF8574.git
