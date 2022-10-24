@@ -9,6 +9,6 @@ AVRDUDE      = /usr/bin/avrdude
 AVRDUDE_CONF = /etc/avrdude.conf
 USER_LIB_PATH = $(realpath ./lib)
 
-ARDUINO_LIBS = SPI Control-Surface Wire LiquidCrystal_PCF8574 uclock
+ARDUINO_LIBS = SPI Control-Surface Wire LiquidCrystal_PCF8574 uclock Hello_Drum
 
 include $(ARDMK_DIR)/Arduino.mk

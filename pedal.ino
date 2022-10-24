@@ -25,17 +25,33 @@
 #include <Wire.h>
 #include <LiquidCrystal_PCF8574.h>
 #include <uClock.h>
+#include <hellodrum.h>
 
 #include <Arduino_Helpers.h> // https://github.com/tttapa/Arduino-Helpers
 
 #include <AH/Hardware/MultiPurposeButton.hpp>
 #include <Control_Surface.h> // Include the Control Surface library
 
-
+//#define EXPR
 #define DEFAULT_TEMPO 60
+
+enum expr_mode {
+	MODE_EXPR,
+	MODE_DRUM,
+	MODE_TAP
+};
+
+static enum expr_mode expr_mode = MODE_DRUM;
 
 LiquidCrystal_PCF8574 lcd(0x27);  // set the LCD address to 0x27 for a 16 chars and 2 line displayz
 static int g_tick = 0;
+
+#define SCREEN_WIDTH 16
+#define SCREEN_HEIGHT 2
+
+const char *s_tempo = "Tempo";
+const char *s_drum = "Drum";
+const char *s_expr = "Expr.";
 
 BEGIN_CS_NAMESPACE
 
@@ -195,6 +211,9 @@ CCPotentiometer expression {
 	{MIDI_CC::Channel_Volume, CHANNEL_1}, // Channel volume of channel 1
 };
 
+HelloDrum drum(A1);
+const MIDIAddress noteAddress {MIDI_Notes::C(2), CHANNEL_10};
+
 USBSerialMIDI_Interface midi {115200};
 
 void setup() {
@@ -211,12 +230,26 @@ void setup() {
   uClock.start();
 
   // Start the screen
-  lcd.begin(16, 2);  // initialize the lcd
+  lcd.begin(SCREEN_WIDTH, SCREEN_HEIGHT);  // initialize the lcd
   lcd.setBacklight(255);
   lcd.home();
   lcd.clear();
 
-  lcd.print("Tempo  Expr.");
+
+  drum.setCurve(3); //Set velocity curve 
+	
+  lcd.print(s_tempo);
+
+  if (expr_mode == MODE_DRUM)
+  {
+	  lcd.setCursor(SCREEN_WIDTH - strlen(s_drum),0);
+	  lcd.print(s_drum);
+  }
+  else
+  {
+	  lcd.setCursor(SCREEN_WIDTH - strlen(s_expr),0);
+	  lcd.print(s_expr);
+  }
 }
 
 static int old_exp = 0;
@@ -226,25 +259,51 @@ static bool refresh = true;
 
 void loop() {
   Control_Surface.loop(); // Update the Control Surface
-
-  int exp_pedal = expression.getValue();
+  int exp_pedal;
   int tempo = uClock.getTempo();
 
-  if ((tempo != old_tempo) || (exp_pedal != old_exp))
+  if (expr_mode == MODE_DRUM)
+  {
+	  drum.singlePiezo(30, 10, 20, 60);
+
+	  if (drum.hit)
+	  {
+		  midi.sendNoteOn(noteAddress, drum.velocity);
+		  refresh = true;
+	  }
+  }
+  else
+  {
+	  exp_pedal = expression.getValue();
+	  if (exp_pedal != old_exp)
+		  refresh = true;
+  }
+
+  if (tempo != old_tempo)
 	  refresh = true;
   
 	if (++loops % 1000 == 0 && refresh)
 	{
+		char number[4];
 		lcd.setCursor(0,1);
 		lcd.print("   ");
 		lcd.setCursor(0,1);
 		lcd.print(tempo);
-		lcd.setCursor(9,1);
-		lcd.print("   ");
-		lcd.setCursor(9,1);
-		lcd.print(exp_pedal);
 		old_tempo = tempo;
-		old_exp = exp_pedal;
+		lcd.setCursor(SCREEN_WIDTH-3,1);
+		lcd.print("   ");
+		lcd.setCursor(SCREEN_WIDTH-3,1);
+		
+		if( expr_mode == MODE_DRUM)
+		{
+			snprintf(number, 4,"%3d", drum.velocity);
+			lcd.print(number);
+		}
+		else
+		{
+			lcd.print(exp_pedal);
+			old_exp = exp_pedal;
+		}
 		refresh = false;
 	}
 }

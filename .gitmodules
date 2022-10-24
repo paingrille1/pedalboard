@@ -10,3 +10,9 @@
 [submodule "lib/LiquidCrystal_PCF8574"]
 	path = lib/LiquidCrystal_PCF8574
 	url = https://github.com/mathertel/LiquidCrystal_PCF8574.git
+[submodule "lv2/waflib"]
+	path = lv2/waflib
+	url = https://gitlab.com/drobilla/autowaf.git
+[submodule "lib/Hello_Drum"]
+	path = lib/Hello_Drum
+	url = https://github.com/RyoKosaka/HelloDrum-arduino-Library.git
