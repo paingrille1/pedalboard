@@ -35,13 +35,6 @@
 //#define EXPR
 #define DEFAULT_TEMPO 60
 
-enum expr_mode {
-	MODE_EXPR,
-	MODE_DRUM,
-	MODE_TAP
-};
-
-static enum expr_mode expr_mode = MODE_DRUM;
 
 LiquidCrystal_PCF8574 lcd(0x27);  // set the LCD address to 0x27 for a 16 chars and 2 line displayz
 static int g_tick = 0;
@@ -162,14 +155,118 @@ class MyNoteCCKPLEDPWM
 /// @ingroup    midi-input-elements-leds
 using MyNoteLEDPWM = MyNoteCCKPLEDPWM<MIDIMessageType::NOTE_ON>;
 
+template <class Sender>
+class MIDIDrum : public MIDIOutputElement {
+  public:
+    /**
+     * @brief   Construct a new MIDIButton.
+     *
+     * @param   pin
+     *          The digital input pin with the button connected.
+     *          The internal pull-up resistor will be enabled.
+     * @param   address
+     *          The MIDI address to send to.
+     * @param   sender
+     *          The MIDI sender to use.
+     */
+    MIDIDrum(pin_t pin, MIDIAddress address, const Sender &sender)
+        : pad(pin), address(address), sender(sender) {}
+
+    void begin() override { pad.setCurve(0); }
+    void update() override {
+		pad.singlePiezo(30, 10, 20, 60);
+
+		if (pad.hit)
+		{
+			sender.setVelocity(pad.velocity);
+            sender.sendOn(address);
+		}
+    }
+
+    /// Get the MIDI address.
+    MIDIAddress getAddress() const { return this->address; }
+    /// Set the MIDI address. Has unexpected consequences if used while the 
+    /// push button is pressed. Use banks if you need to support that.
+    void setAddressUnsafe(MIDIAddress address) { this->address = address; }
+
+  private:
+	HelloDrum pad;
+    const MIDIAddress address;
+
+  public:
+    Sender sender;
+};
+
+class NoteDrum : public MIDIDrum<DigitalNoteSender> {
+	public:
+		NoteDrum(pin_t pin, MIDIAddress address, uint8_t velocity = 0x7F)
+			: MIDIDrum{
+				pin,
+				address,
+				{velocity},
+			} {}
+};
+
+enum analog_mode {
+	MODE_EXPR,
+	MODE_DRUM,
+	MODE_TAP
+};
+
+class AnalogInput: public AH::Updatable<> {
+	public:
+		AnalogInput(pin_t pin, MIDIAddress drumAddress, 
+				MIDIAddress CCAddress, 
+				enum analog_mode mode = MODE_EXPR) : 
+			drum(pin, drumAddress, 0x7F), 
+			expression(pin, CCAddress), 
+			mode(mode), refresh(true) {}
+		void begin() override { }
+    
+		void update() override {
+			if (refresh) {
+				switch (mode) {
+					case MODE_EXPR:
+						if (drum.isEnabled())
+							drum.disable();
+						if (!expression.isEnabled())
+							expression.enable();
+						break;
+					case MODE_DRUM:
+					case MODE_TAP:
+						if (expression.isEnabled())
+							expression.disable();
+						if (!drum.isEnabled())
+							drum.enable();
+						break;
+				}
+				refresh = false;
+			}
+		}
+
+		void setMode( enum analog_mode m) {
+			mode = m;
+			refresh = true;
+		}
+
+	private:
+		NoteDrum drum;
+		CCPotentiometer expression;	
+		enum analog_mode mode;
+		bool refresh;
+};
+
 END_CS_NAMESPACE
 
 
 #define BUTTON_CHANNEL CHANNEL_15
+#define DRUM_CHANNEL CHANNEL_10
 #define BUTTON_NOTE_0 MIDI_Notes::C(0)
 #define BUTTON_NOTE_1 MIDI_Notes::Db(0)
 #define BUTTON_NOTE_2 MIDI_Notes::D(0)
 #define BUTTON_NOTE_3 MIDI_Notes::Eb(0)
+
+#define BUTTON_NOTE_DRUM MIDI_Notes::C(3)
 
 #define BUTTON_NOTE(i) BUTTON_NOTE_##i
 
@@ -186,6 +283,8 @@ MyNoteLEDPWM leds[] {
 	{5 , {BUTTON_NOTE(2), BUTTON_CHANNEL}},
 	{3 , {BUTTON_NOTE(3), BUTTON_CHANNEL}}
 };
+
+AnalogInput ai {A1, {BUTTON_NOTE(DRUM), DRUM_CHANNEL}, {MIDI_CC::Channel_Volume, CHANNEL_1}};
 
 void midiClock(uint32_t tick)
 {
@@ -205,17 +304,48 @@ bool realTimeMessageCallback(RealTimeMessage rt) {
 				 // return false.
 }
 
-// expression pedal
-CCPotentiometer expression {
-	A1, // Analog pin connected to potentiometer
-	{MIDI_CC::Channel_Volume, CHANNEL_1}, // Channel volume of channel 1
-};
-
-HelloDrum drum(A1);
-const MIDIAddress noteAddress {MIDI_Notes::C(2), CHANNEL_10};
-
 USBSerialMIDI_Interface midi {115200};
 
+
+static void display_header(void)
+{
+  lcd.home();
+  lcd.clear();
+
+  lcd.print(s_tempo);
+}
+
+static int old_exp = 0;
+static int old_tempo = 60;
+static int loops = 0;
+static bool refresh = true;
+#if 0
+static void refresh_display(bool force)
+{
+  int exp_pedal;
+  int tempo = uClock.getTempo();
+
+  if (force)
+	  refresh = true;
+
+  if (tempo != old_tempo)
+	  refresh = true;
+  
+	if (++loops % 1000 == 0 && refresh)
+	{
+		char number[4];
+		lcd.setCursor(0,1);
+		lcd.print("   ");
+		lcd.setCursor(0,1);
+		lcd.print(tempo);
+		old_tempo = tempo;
+		lcd.setCursor(SCREEN_WIDTH-3,1);
+		lcd.print("   ");
+		lcd.setCursor(SCREEN_WIDTH-3,1);
+		refresh = false;
+	}
+}
+#endif
 void setup() {
   Control_Surface.begin(); // Initialize Control Surface
 
@@ -232,78 +362,13 @@ void setup() {
   // Start the screen
   lcd.begin(SCREEN_WIDTH, SCREEN_HEIGHT);  // initialize the lcd
   lcd.setBacklight(255);
-  lcd.home();
-  lcd.clear();
 
-
-  drum.setCurve(3); //Set velocity curve 
-	
-  lcd.print(s_tempo);
-
-  if (expr_mode == MODE_DRUM)
-  {
-	  lcd.setCursor(SCREEN_WIDTH - strlen(s_drum),0);
-	  lcd.print(s_drum);
-  }
-  else
-  {
-	  lcd.setCursor(SCREEN_WIDTH - strlen(s_expr),0);
-	  lcd.print(s_expr);
-  }
+  display_header();
 }
 
-static int old_exp = 0;
-static int old_tempo = 60;
-static int loops = 0;
-static bool refresh = true;
-
+int loopsy=0;
 void loop() {
   Control_Surface.loop(); // Update the Control Surface
-  int exp_pedal;
-  int tempo = uClock.getTempo();
 
-  if (expr_mode == MODE_DRUM)
-  {
-	  drum.singlePiezo(30, 10, 20, 60);
-
-	  if (drum.hit)
-	  {
-		  midi.sendNoteOn(noteAddress, drum.velocity);
-		  refresh = true;
-	  }
-  }
-  else
-  {
-	  exp_pedal = expression.getValue();
-	  if (exp_pedal != old_exp)
-		  refresh = true;
-  }
-
-  if (tempo != old_tempo)
-	  refresh = true;
-  
-	if (++loops % 1000 == 0 && refresh)
-	{
-		char number[4];
-		lcd.setCursor(0,1);
-		lcd.print("   ");
-		lcd.setCursor(0,1);
-		lcd.print(tempo);
-		old_tempo = tempo;
-		lcd.setCursor(SCREEN_WIDTH-3,1);
-		lcd.print("   ");
-		lcd.setCursor(SCREEN_WIDTH-3,1);
-		
-		if( expr_mode == MODE_DRUM)
-		{
-			snprintf(number, 4,"%3d", drum.velocity);
-			lcd.print(number);
-		}
-		else
-		{
-			lcd.print(exp_pedal);
-			old_exp = exp_pedal;
-		}
-		refresh = false;
-	}
+//  refresh_display(false);
 }
