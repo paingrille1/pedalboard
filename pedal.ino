@@ -266,7 +266,7 @@ END_CS_NAMESPACE
 #define BUTTON_NOTE_2 MIDI_Notes::D(0)
 #define BUTTON_NOTE_3 MIDI_Notes::Eb(0)
 
-#define BUTTON_NOTE_DRUM MIDI_Notes::C(3)
+#define BUTTON_NOTE_DRUM MIDI_Notes::C(2)
 
 #define BUTTON_NOTE(i) BUTTON_NOTE_##i
 
@@ -284,7 +284,7 @@ MyNoteLEDPWM leds[] {
 	{3 , {BUTTON_NOTE(3), BUTTON_CHANNEL}}
 };
 
-AnalogInput ai {A1, {BUTTON_NOTE(DRUM), DRUM_CHANNEL}, {MIDI_CC::Channel_Volume, CHANNEL_1}};
+AnalogInput ai {A1, {BUTTON_NOTE(DRUM), DRUM_CHANNEL}, {MIDI_CC::Channel_Volume, CHANNEL_1}, MODE_DRUM};
 
 void midiClock(uint32_t tick)
 {
@@ -319,7 +319,6 @@ static int old_exp = 0;
 static int old_tempo = 60;
 static int loops = 0;
 static bool refresh = true;
-#if 0
 static void refresh_display(bool force)
 {
   int exp_pedal;
@@ -345,7 +344,6 @@ static void refresh_display(bool force)
 		refresh = false;
 	}
 }
-#endif
 void setup() {
   Control_Surface.begin(); // Initialize Control Surface
 
@@ -370,5 +368,5 @@ int loopsy=0;
 void loop() {
   Control_Surface.loop(); // Update the Control Surface
 
-//  refresh_display(false);
+  refresh_display(false);
 }
