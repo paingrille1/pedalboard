@@ -170,7 +170,7 @@ class MIDIDrum : public MIDIOutputElement {
      *          The MIDI sender to use.
      */
     MIDIDrum(pin_t pin, MIDIAddress address, const Sender &sender)
-        : pad(pin), address(address), sender(sender) {}
+        : pad(pin), address(address), sender(sender)  {}
 
     void begin() override { pad.setCurve(0); }
     void update() override {
@@ -213,16 +213,36 @@ enum analog_mode {
 	MODE_TAP
 };
 
-class AnalogInput: public AH::Updatable<> {
+class AnalogInput: public MIDIInputElementNote {
 	public:
 		AnalogInput(pin_t pin, MIDIAddress drumAddress, 
 				MIDIAddress CCAddress, 
 				enum analog_mode mode = MODE_EXPR) : 
 			drum(pin, drumAddress, 0x7F), 
 			expression(pin, CCAddress), 
-			mode(mode), refresh(true) {}
-		void begin() override { }
-    
+			mode(mode), refresh(true)
+			{}
+		void begin() override {}
+
+		bool updateWith(MessageType midiMsg) {
+			switch (midiMsg.getAddress().getAddress())
+			{
+				// C(-1) ==> change type
+				case 0:
+					setMode( (enum analog_mode)midiMsg.getData2() - 1);
+					return true;
+				// C#(-1) ==> Channel
+				case 1:
+				// D(-1)  ==> Note/CC
+				case 2:
+				// D#(-1) ==> Curve type (drum only)
+				case 3:
+				default:
+					break;
+			}
+			return false;
+		}
+
 		void update() override {
 			if (refresh) {
 				switch (mode) {
