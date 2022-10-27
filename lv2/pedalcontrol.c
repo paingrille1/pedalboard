@@ -55,7 +55,7 @@ typedef struct {
 
   // Port buffers
   const LV2_Atom_Sequence* midiIn;
-  const LV2_Atom_Sequence* midiOut;
+  LV2_Atom_Sequence* midiOut;
 
   // Features
   LV2_URID_Map*  map;
@@ -122,7 +122,7 @@ connect_port(LV2_Handle instance, uint32_t port, void* data)
     self->midiIn = (const LV2_Atom_Sequence*)data;
     break;
   case PEDALBOARD_MIDI_OUT:
-    self->midiIn = (const LV2_Atom_Sequence*)data;
+    self->midiOut = (LV2_Atom_Sequence*)data;
     break;
   }
 }
@@ -133,43 +133,57 @@ activate(LV2_Handle instance)
   Pedalcontrol* self       = (Pedalcontrol*)instance;
 }
 
-static int oldtype = 0;
-
 static void
 run(LV2_Handle instance, uint32_t sample_count)
 {
 	Pedalcontrol* self   = (Pedalcontrol*)instance;
-	uint32_t  offset = 0;
+	const uint32_t out_capacity = self->midiOut->atom.size;
 
-	LV2_ATOM_SEQUENCE_FOREACH (self->midiIn, ev) {
-		if (ev->body.type == self->uris.midi_MidiEvent) {
-			const uint8_t* const msg = (const uint8_t*)(ev + 1);
-			switch (lv2_midi_message_type(msg)) {
-			default:
-				break;
-			}
-		}
+	// Struct for a 3 byte MIDI event, used for writing notes
+	typedef struct {
+		LV2_Atom_Event event;
+		uint8_t        msg[3];
+	} MIDINoteEvent;
 
-		offset = (uint32_t)ev->time.frames;
+	MIDINoteEvent cfg;
+
+	lv2_atom_sequence_clear(self->midiOut);
+	self->midiOut->atom.type = self->midiIn->atom.type;
+
+	LV2_ATOM_SEQUENCE_FOREACH(self->midiIn, ev) {
+		// just forward everything
+		lv2_atom_sequence_append_event(self->midiOut, out_capacity, ev);
 	}
-
+	cfg.event.time.frames = 0;
+	cfg.event.body.type = self->uris.midi_MidiEvent;
+	cfg.event.body.size = 3; // ???
+	cfg.msg[0] = 0x90;
 
 	if ((int)*(self->exprType) != self->type) {
 		self->type = (int)*(self->exprType);
-		printf("type :%d\n", self->type);
+		cfg.msg[1] = 0;
+		cfg.msg[2] = self->type;
+		lv2_atom_sequence_append_event(self->midiOut, out_capacity, &cfg.event);
 	}
 	if ((int)*(self->exprChan) != self->chan) {
 		self->chan = (int)*(self->exprChan);
-		printf("channel :%d\n", self->chan);
+		cfg.msg[1] = 1;
+		cfg.msg[2] = self->chan;
+		lv2_atom_sequence_append_event(self->midiOut, out_capacity, &cfg.event);
 	}
 	if ((int)*(self->exprAddr) != self->addr) {
 		self->addr = (int)*(self->exprAddr);
-		printf("Addr :%d\n", self->addr);
+		cfg.msg[1] = 2;
+		cfg.msg[2] = self->addr;
+		lv2_atom_sequence_append_event(self->midiOut, out_capacity, &cfg.event);
 	}
 	if ((int)*(self->exprCurv) != self->curv) {
 		self->curv = (int)*(self->exprCurv);
-		printf("Curve :%d\n", self->curv);
+		cfg.msg[1] = 3;
+		cfg.msg[2] = self->curv;
+		lv2_atom_sequence_append_event(self->midiOut, out_capacity, &cfg.event);
 	}
+
 
 }
 
