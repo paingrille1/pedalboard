@@ -1,18 +1,18 @@
 [submodule "uclock"]
-	path = lib/uclock
+	path = arduino/lib/uclock
 	url = https://github.com/midilab/uClock.git
 [submodule "lib/arduinomk"]
-	path = lib/arduinomk
+	path = arduino/lib/arduinomk
 	url = https://github.com/mjoldfield/Arduino-Makefile
 [submodule "lib/Control-Surface"]
-	path = lib/Control-Surface
+	path = arduino/lib/Control-Surface
 	url = https://github.com/tttapa/Control-Surface
 [submodule "lib/LiquidCrystal_PCF8574"]
-	path = lib/LiquidCrystal_PCF8574
+	path = arduino/lib/LiquidCrystal_PCF8574
 	url = https://github.com/mathertel/LiquidCrystal_PCF8574.git
 [submodule "lv2/waflib"]
 	path = lv2/waflib
 	url = https://gitlab.com/drobilla/autowaf.git
 [submodule "lib/Hello_Drum"]
-	path = lib/Hello_Drum
+	path = arduino/lib/Hello_Drum
 	url = https://github.com/RyoKosaka/HelloDrum-arduino-Library.git
