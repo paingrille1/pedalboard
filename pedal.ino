@@ -25,7 +25,13 @@
 #include <Wire.h>
 #include <LiquidCrystal_PCF8574.h>
 #include <uClock.h>
+
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include <hellodrum.h>
+//#pragma GCC diagnostic pop
+
+
 
 #include <Arduino_Helpers.h> // https://github.com/tttapa/Arduino-Helpers
 
@@ -183,15 +189,19 @@ class MIDIDrum : public MIDIOutputElement {
 		}
     }
 
+	void setCurve(int curve) {
+		pad.setCurve(curve);
+	}
+
     /// Get the MIDI address.
     MIDIAddress getAddress() const { return this->address; }
     /// Set the MIDI address. Has unexpected consequences if used while the 
     /// push button is pressed. Use banks if you need to support that.
-    void setAddressUnsafe(MIDIAddress address) { this->address = address; }
+    void setAddress(MIDIAddress address) { this->address = address; }
 
   private:
 	HelloDrum pad;
-    const MIDIAddress address;
+    MIDIAddress address;
 
   public:
     Sender sender;
@@ -227,16 +237,44 @@ class AnalogInput: public MIDIInputElementNote {
 		bool updateWith(MessageType midiMsg) {
 			switch (midiMsg.getAddress().getAddress())
 			{
-				// C(-1) ==> change type
+				//C(-1) ==> change type
 				case 0:
-					setMode( (enum analog_mode)midiMsg.getData2() - 1);
+					setMode( (enum analog_mode)(midiMsg.getData2() - 1));
 					return true;
 				// C#(-1) ==> Channel
 				case 1:
+					if (mode == MODE_EXPR)
+					{
+						MIDIAddress address = expression.getAddress();
+						expression.setAddress(MIDIAddress(address.getAddress(),
+									Channel(midiMsg.getData2())));
+
+					}
+					else
+					{
+						MIDIAddress address = drum.getAddress();
+						drum.setAddress(MIDIAddress(address.getAddress(),
+									Channel(midiMsg.getData2())));
+					}
+					return true;
 				// D(-1)  ==> Note/CC
 				case 2:
+					if (mode == MODE_EXPR)
+					{
+						MIDIAddress address = expression.getAddress();
+						expression.setAddress(MIDIAddress(midiMsg.getData2(),address.getChannel()));
+
+					}
+					else
+					{
+						MIDIAddress address = drum.getAddress();
+						drum.setAddress(MIDIAddress(midiMsg.getData2(),address.getChannel()));
+					}
+					return true;
 				// D#(-1) ==> Curve type (drum only)
 				case 3:
+					drum.setCurve(midiMsg.getData2()-1);
+					return true;
 				default:
 					break;
 			}
