@@ -1,0 +1,5 @@
+# connect
+ACTION=="add", SUBSYSTEM=="tty", ENV{DEVNAME}=="/dev/ttyACM[0-9]", TAG+="systemd", ENV{SYSTEMD_WANTS}+="mod-ttymidi-usb@$env{DEVNAME}.service"
+
+# disconnect 
+ACTION=="unbind", SUBSYSTEM=="usb", RUN+="/bin/systemctl --no-block stop mod-ttymidi-usb@*.service"
