@@ -105,6 +105,11 @@ connect_port(LV2_Handle instance, uint32_t port, void* data)
 {
   Pedalcontrol* self = (Pedalcontrol*)instance;
 
+  self->type = -1;
+  self->chan = -1;
+  self->addr = -1;
+  self->curv = -1;
+
   switch ((PortIndex)port) {
   case PEDALBOARD_EXPRTYPE:
     self->exprType = (float*)data;
@@ -164,24 +169,28 @@ run(LV2_Handle instance, uint32_t sample_count)
 		cfg.msg[1] = 0;
 		cfg.msg[2] = self->type;
 		lv2_atom_sequence_append_event(self->midiOut, out_capacity, &cfg.event);
+		printf("new type\n");
 	}
 	if ((int)*(self->exprChan) != self->chan) {
 		self->chan = (int)*(self->exprChan);
 		cfg.msg[1] = 1;
 		cfg.msg[2] = self->chan;
 		lv2_atom_sequence_append_event(self->midiOut, out_capacity, &cfg.event);
+		printf("new chan\n");
 	}
 	if ((int)*(self->exprAddr) != self->addr) {
 		self->addr = (int)*(self->exprAddr);
 		cfg.msg[1] = 2;
 		cfg.msg[2] = self->addr;
 		lv2_atom_sequence_append_event(self->midiOut, out_capacity, &cfg.event);
+		printf("new addr\n");
 	}
 	if ((int)*(self->exprCurv) != self->curv) {
 		self->curv = (int)*(self->exprCurv);
 		cfg.msg[1] = 3;
 		cfg.msg[2] = self->curv;
 		lv2_atom_sequence_append_event(self->midiOut, out_capacity, &cfg.event);
+		printf("new curve\n");
 	}
 
 
